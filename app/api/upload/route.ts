@@ -15,6 +15,10 @@ export const maxDuration = 30; // 30 seconds max
  */
 
 const PINATA_JWT = process.env.PINATA_JWT; // Server-side only
+const PINATA_API_KEY = process.env.PINATA_API_KEY; // Alternative: API Key
+const PINATA_API_SECRET = process.env.PINATA_API_SECRET; // Alternative: API Secret
+
+// Pinata v2 API endpoint (current as of 2025)
 const PINATA_URL = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
 
 // Simple rate limiter (in-memory, resets on deploy)
@@ -55,9 +59,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate JWT exists server-side
-    if (!PINATA_JWT) {
-      console.error('PINATA_JWT not configured');
+    // Validate Pinata credentials exist
+    if (!PINATA_JWT && !(PINATA_API_KEY && PINATA_API_SECRET)) {
+      console.error('Pinata credentials not configured (need PINATA_JWT or PINATA_API_KEY + PINATA_API_SECRET)');
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
@@ -94,9 +98,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`Uploading file: ${file.name}, size: ${file.size} bytes`);
+    console.log(`Uploading file: ${file.name}, size: ${file.size} bytes (${(file.size/1024/1024).toFixed(2)}MB)`);
 
-    // Forward to Pinata
+    // Forward to Pinata v1 API (still supported, but use API Key auth for reliability)
     const pinataForm = new FormData();
     pinataForm.append('file', file, file.name);
     
@@ -109,32 +113,64 @@ export async function POST(req: NextRequest) {
       }
     }));
 
+    // Prioritize API Key auth (more reliable) over JWT
+    const headers: Record<string, string> = {};
+    if (PINATA_API_KEY && PINATA_API_SECRET) {
+      headers['pinata_api_key'] = PINATA_API_KEY;
+      headers['pinata_secret_api_key'] = PINATA_API_SECRET;
+    } else if (PINATA_JWT) {
+      headers['Authorization'] = `Bearer ${PINATA_JWT}`;
+    }
+
     const response = await fetch(PINATA_URL, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PINATA_JWT}`,
-      },
+      headers,
       body: pinataForm,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Pinata error:', response.status, errorText);
+      
+      // Parse specific Pinata errors
+      let errorMessage = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error?.reason === 'NO_SCOPES_FOUND') {
+          errorMessage = 'Pinata key lacks upload permission. Use PINATA_API_KEY + PINATA_API_SECRET instead of JWT at pinata.cloud/keys';
+        } else if (errorJson.error?.details) {
+          errorMessage = errorJson.error.details;
+        }
+      } catch {}
+      
       return NextResponse.json(
-        { error: `Pinata upload failed: ${errorText}` },
+        { error: `Pinata upload failed: ${errorMessage}` },
         { status: response.status }
       );
     }
 
     const data = await response.json();
     
-    console.log('Pinata success:', data.IpfsHash);
+    console.log('Pinata success:', data.IpfsHash || data.Hash || data.PinHash);
+    
+    // Handle both v1 and v2 response formats
+    const cid = data.IpfsHash || data.Hash || data.PinHash || data.cid;
+    const size = data.PinSize || data.size || data.Size || file.size;
+    const timestamp = data.Timestamp || Date.now();
+    
+    if (!cid) {
+      console.error('Unexpected Pinata response:', data);
+      return NextResponse.json(
+        { error: 'Invalid response from Pinata - no CID found' },
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json({
       success: true,
-      cid: data.IpfsHash,
-      size: data.PinSize,
-      timestamp: data.Timestamp,
+      cid: cid,
+      size: size,
+      timestamp: timestamp,
     });
 
   } catch (error: any) {

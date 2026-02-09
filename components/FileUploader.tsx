@@ -88,7 +88,7 @@ export function FileUploader({ onFileSelected, allowPasswordEncryption = false }
     }
   };
 
-  const MAX_UPLOAD_SIZE = 22.5 * 1024 * 1024; // 22.5MB for Vercel Pro tier (5x free tier)
+  const MAX_UPLOAD_SIZE = 4.5 * 1024 * 1024; // 4.5MB for Vercel free tier (hard limit)
   const MIN_FILE_SIZE = 1; // Minimum 1 byte (reject empty files)
   
   const validateFile = (file: File): string | null => {
@@ -211,7 +211,7 @@ export function FileUploader({ onFileSelected, allowPasswordEncryption = false }
             Any file type. Encrypted in browser.
           </p>
           <p className="text-xs text-amber-600 font-medium">
-            ⚠️ Vercel free tier: Max 4.5MB. Pro tier: Up to 100MB.
+            ⚠️ Max 4.5MB (Vercel platform limit)
           </p>
           <input
             type="file"
