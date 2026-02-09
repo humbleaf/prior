@@ -371,7 +371,7 @@ export default function ClaimPage() {
             </CardHeader>
             <CardContent className="text-center py-12">
               <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mx-auto mb-6" />
-              <p className="text-lg text-slate-700">Writing claim to Base Sepolia...</p>
+              <p className="text-lg text-slate-700">Anchoring to Base Mainnet...</p>
               <p className="text-sm text-slate-500 mt-2">IPFS CID: {ipfsCid}</p>
             </CardContent>
           </Card>
@@ -403,7 +403,7 @@ export default function ClaimPage() {
                     <p className="text-sm text-slate-500 mb-1">Transaction Hash</p>
                     <p className="font-mono text-slate-700 truncate">{txHash}</p>
                     <a
-                      href={`https://sepolia.basescan.org/tx/${txHash}`}
+                      href={`https://basescan.org/tx/${txHash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-500 mt-2"
