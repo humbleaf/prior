@@ -15,16 +15,17 @@ interface FirstClaimData {
   decryptionKey?: string;
 }
 
-// 🎉 Genesis Tesla Claim #0 — The Timeless Package
-// This will be populated after mainnet deployment
+// 🎉 Genesis Tesla Claim #1 — The Timeless Package
+// Filed: Sun Feb 8, 2026 22:15:27 CST
+// Contract: 0x4971ec14D71156Ab945c32238b29969308a022D6 (Base Mainnet)
 const FIRST_CLAIM: FirstClaimData = {
-  ipfsCid: "[to be filled after deployment]",
-  timestamp: "Genesis",
-  txHash: "[to be filled after deployment]",
-  blockNumber: 0, // To be filled after deployment
-  sha256: "[computed on upload]",
-  sizeBytes: 0, // To be measured
-  description: "PRIOR Timeless Package v1.0.0 — The complete protocol, encrypted and immortalized",
+  ipfsCid: "bafybeif6mkotu45gcaspvfklpqj7cqznlbtcih7bn2ruejru4megxis6te",
+  timestamp: "Sun Feb 8, 2026 22:15:27 CST (Unix: 1770610527)",
+  txHash: "0x5b718011393efa7e0405c8090bdf4331ec04af935245e867aecf55cbca83f4b6",
+  blockNumber: 41910590,
+  sha256: "0xA309902383A269AC712CA3F0982CBAA9387655E3E29AF4CE16440F82D376748F",
+  sizeBytes: 16777216, // ~16MB
+  description: "PRIOR Timeless Package v1.0.1 — The complete protocol, encrypted and immortalized. Self-referential proof of existence.",
   decryptionKey: "PRIOR_GENESIS_SEED"
 };
 
@@ -58,11 +59,11 @@ export default function FirstClaimPage() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm mb-6">
             <CheckCircle className="w-4 h-4" />
-            <span className="text-sm font-medium">Genesis Claim Established</span>
+            <span className="text-sm font-medium">Genesis Claim #1 Filed</span>
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Tesla Claim #0
+            Tesla Claim #1
           </h1>
           
           <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto mb-8">
@@ -163,28 +164,28 @@ export default function FirstClaimPage() {
               </div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">Resurrection Key</h3>
               <p className="text-slate-600 mb-4">
-                If PRIOR ever goes offline, Claim #0 can be decrypted using the seed 
+                If PRIOR ever goes offline, Claim #1 can be decrypted using the seed 
                 phrase <code className="bg-slate-100 px-1 rounded font-mono text-indigo-600">PRIOR_GENESIS_SEED</code>.
               </p>
               <p className="text-xs text-slate-500">
                 This key is also published via Bitcoin OP_RETURN and stored in multiple 
-                offline locations for redundancy.
+                offline locations for redundancy. (Pending: tomorrow)
               </p>
             </div>
           </div>
         </div>
 
-        {/* Genesis Claim #0 — Timeless Package */}
+        {/* Genesis Claim #1 — Timeless Package */}
         <div className="mb-16 p-8 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center">
               <Archive className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Claim #0 — The Timeless Package</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Claim #1 — The Timeless Package</h2>
           </div>
           
           <p className="text-slate-600 mb-6">
-            Unlike user claims that protect inventions, Claim #0 protects <strong>PRIOR itself</strong>. 
+            Unlike user claims that protect inventions, Claim #1 protects <strong>PRIOR itself</strong>. 
             It contains the complete website, encryption tools, smart contracts, and documentation—
             encrypted as a <strong>self-referential proof</strong>. If prior-claim.xyz ever disappears, 
             anyone can reconstruct the entire system from this single claim.
@@ -196,15 +197,14 @@ export default function FirstClaimPage() {
               Decryption Instructions
             </h3>
             <ol className="text-sm text-slate-600 space-y-2 list-decimal list-inside">
-              <li>Query Claim #0 from the PRIOR smart contract</li>
-              <li>Download the encrypted tarball from the IPFS CID</li>
-              <li>Use the standalone decrypt tool (included in package) or any AES-256-GCM decryptor</li>
+              <li>Query Claim #1 from the PRIOR smart contract (0x4971ec...)</li>
+              <li>Download the encrypted tarball from the IPFS CID on Base Mainnet</li>
+              <li>Decrypt using: <code className="bg-indigo-100 px-2 py-0.5 rounded font-mono text-indigo-700">openssl enc -aes-256-cbc -pbkdf2 -iter 100000</code></li>
               <li>
-                <strong>Decryption key:</strong> Derived from seed phrase 
+                <strong>Decryption key:</strong>
                 <code className="bg-indigo-100 px-2 py-0.5 rounded font-mono text-indigo-700 mx-1">PRIOR_GENESIS_SEED</code>
-                with file-specific salt (also stored on-chain)
               </li>
-              <li>Extract and open <code className="bg-slate-100 px-1 rounded">index.html</code> — PRIOR lives again</li>
+              <li>Extract with <code className="bg-slate-100 px-1 rounded">tar -xzf</code> — PRIOR lives again</li>
             </ol>
           </div>
           
@@ -212,7 +212,7 @@ export default function FirstClaimPage() {
             <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
               <h3 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                 <Download className="w-5 h-5 text-indigo-600" />
-                Download v1.0.0
+                Download v1.0.1
               </h3>
               <p className="text-sm text-slate-600 mb-4">
                 Complete static export. Unzip, open index.html. No server needed. 
@@ -220,7 +220,7 @@ export default function FirstClaimPage() {
               </p>
               <div className="space-y-2">
                 <a 
-                  href="/prior-timeless-v1.0.0.zip"
+                  href="/prior-genesis-claim-0.tar.gz"
                   download
                   className="w-full py-3 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors inline-flex items-center justify-center gap-2"
                 >
@@ -228,7 +228,7 @@ export default function FirstClaimPage() {
                   Download Timeless Package
                 </a>
                 <p className="text-xs text-slate-500 text-center">
-                  Encrypted. Decrypt with: PRIOR_GENESIS_SEED
+                  16MB • SHA256: 40398711...bca4259
                 </p>
               </div>
             </div>
@@ -239,13 +239,12 @@ export default function FirstClaimPage() {
                 What's Inside
               </h3>
               <ul className="text-sm text-slate-600 space-y-2">
-                <li>✓ Complete Prior website (static export)</li>
-                <li>✓ Standalone decrypt.html tool with UI</li>
-                <li>✓ Full smart contract source code</li>
-                <li>✓ ABIs and deployment artifacts</li>
-                <li>✓ README with full instructions</li>
-                <li>✓ Quiet Invariants manifesto</li>
-                <li>✓ AES-256-GCM implementation</li>
+                <li>✓ Complete web app (Next.js static export)</li>
+                <li>✓ Smart contracts (PRIORTeslaClaim v2)</li>
+                <li>✓ Foundry deployment scripts</li>
+                <li>✓ Documentation & architecture</li>
+                <li>✓ Genesis key file</li>
+                <li>✓ Decryption instructions</li>
               </ul>
             </div>
           </div>
