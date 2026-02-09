@@ -59,11 +59,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Debug: Log what's actually loaded (keys masked)
+    console.log('Pinata creds check:', {
+      hasJWT: !!PINATA_JWT,
+      jwtPrefix: PINATA_JWT ? PINATA_JWT.substring(0, 20) + '...' : 'none',
+      hasApiKey: !!PINATA_API_KEY,
+      keyPrefix: PINATA_API_KEY ? PINATA_API_KEY.substring(0, 10) + '...' : 'none',
+      hasSecret: !!PINATA_API_SECRET,
+    });
+
     // Validate Pinata credentials exist
     if (!PINATA_JWT && !(PINATA_API_KEY && PINATA_API_SECRET)) {
       console.error('Pinata credentials not configured (need PINATA_JWT or PINATA_API_KEY + PINATA_API_SECRET)');
       return NextResponse.json(
-        { error: 'Server configuration error' },
+        { error: 'Server configuration error: Pinata credentials missing' },
         { status: 500 }
       );
     }
@@ -115,11 +124,18 @@ export async function POST(req: NextRequest) {
 
     // Prioritize API Key auth (more reliable) over JWT
     const headers: Record<string, string> = {};
+    let authMethod = 'none';
     if (PINATA_API_KEY && PINATA_API_SECRET) {
       headers['pinata_api_key'] = PINATA_API_KEY;
       headers['pinata_secret_api_key'] = PINATA_API_SECRET;
+      authMethod = 'api_key';
+      console.log('Using Pinata API Key auth');
     } else if (PINATA_JWT) {
       headers['Authorization'] = `Bearer ${PINATA_JWT}`;
+      authMethod = 'jwt';
+      console.log('Using Pinata JWT auth (WARNING: may lack scopes)');
+    } else {
+      console.log('NO AUTH METHOD AVAILABLE');
     }
 
     const response = await fetch(PINATA_URL, {
