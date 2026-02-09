@@ -1,0 +1,126 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Server-side IPFS upload proxy
+ * Keeps Pinata JWT server-side, prevents abuse
+ */
+
+const PINATA_JWT = process.env.PINATA_JWT; // Server-side only
+const PINATA_URL = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
+
+// Simple rate limiter (in-memory, resets on deploy)
+const rateLimiter = new Map<string, number[]>();
+const RATE_LIMIT = 5; // uploads per hour
+const RATE_WINDOW = 60 * 60 * 1000; // 1 hour
+
+function getClientIP(req: NextRequest): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  return forwarded?.split(',')[0] || realIp || 'unknown';
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const requests = rateLimiter.get(ip) || [];
+  
+  // Clean old requests
+  const validRequests = requests.filter(time => now - time < RATE_WINDOW);
+  
+  if (validRequests.length >= RATE_LIMIT) {
+    return true;
+  }
+  
+  validRequests.push(now);
+  rateLimiter.set(ip, validRequests);
+  return false;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    // Rate limiting
+    const clientIP = getClientIP(req);
+    if (isRateLimited(clientIP)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Max 5 uploads per hour.' },
+        { status: 429 }
+      );
+    }
+
+    // Validate JWT exists server-side
+    if (!PINATA_JWT) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    // Parse multipart form data
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+    
+    if (!file) {
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    // Size check (100MB max)
+    const MAX_SIZE = 100 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: 'File too large. Max 100MB.' },
+        { status: 413 }
+      );
+    }
+
+    // Forward to Pinata
+    const pinataForm = new FormData();
+    pinataForm.append('file', file, file.name);
+    
+    // Add metadata
+    pinataForm.append('pinataMetadata', JSON.stringify({
+      name: file.name,
+      keyvalues: {
+        origin: 'prior-app',
+        timestamp: new Date().toISOString(),
+      }
+    }));
+
+    const response = await fetch(PINATA_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${PINATA_JWT}`,
+      },
+      body: pinataForm,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      return NextResponse.json(
+        { error: `Pinata upload failed: ${error}` },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    
+    return NextResponse.json({
+      success: true,
+      cid: data.IpfsHash,
+      size: data.PinSize,
+      timestamp: data.Timestamp,
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    return NextResponse.json(
+      { error: 'Upload failed' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET() {
+  return NextResponse.json({ status: 'Upload API ready' });
+}

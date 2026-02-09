@@ -1,6 +1,5 @@
-// lib/ipfs.ts - Pinata IPFS integration
-
-const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT || '';
+// lib/ipfs.ts - Server-side IPFS upload proxy
+// Keeps Pinata credentials server-side for security
 
 export interface IPFSUploadResult {
   cid: string;
@@ -10,71 +9,47 @@ export interface IPFSUploadResult {
 }
 
 /**
- * Test if IPFS is configured
+ * Test if IPFS API is available
  */
 export function isIPFSConfigured(): boolean {
-  const hasJwt = !!PINATA_JWT;
-  console.log('IPFS Config check - JWT available:', hasJwt);
-  console.log('JWT length:', PINATA_JWT?.length);
-  return hasJwt;
+  // Server-side API is always available if deployed
+  return true;
 }
 
 /**
- * Upload file to IPFS via Pinata
+ * Upload file to IPFS via server-side API proxy
+ * Keeps Pinata JWT server-side (not exposed to browser)
  */
 export async function uploadToIPFS(
   file: Blob | File,
   filename?: string
 ): Promise<IPFSUploadResult> {
   
-  if (!PINATA_JWT) {
-    throw new Error('Pinata JWT not configured. Check NEXT_PUBLIC_PINATA_JWT env var.');
-  }
-  
   const formData = new FormData();
   formData.append('file', file, filename || 'prior-upload');
   
-  // Metadata
-  const metadata = JSON.stringify({
-    name: filename || 'prior-claim',
-    keyvalues: {
-      source: 'prior-app',
-      timestamp: Date.now().toString(),
-    }
-  });
-  formData.append('pinataMetadata', metadata);
-  
-  // Options
-  const options = JSON.stringify({
-    cidVersion: 1,
-  });
-  formData.append('pinataOptions', options);
-  
   try {
-    console.log('Uploading to Pinata...');
+    console.log('Uploading via API proxy...');
     
-    const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+    const response = await fetch('/api/upload', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PINATA_JWT}`,
-      },
       body: formData,
     });
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Pinata error response:', errorText);
-      throw new Error(`Pinata upload failed: ${errorText}`);
+      const errorData = await response.json();
+      console.error('Upload error:', errorData);
+      throw new Error(errorData.error || `Upload failed: ${response.status}`);
     }
     
     const data = await response.json();
-    console.log('Pinata upload success:', data.IpfsHash);
+    console.log('Upload success:', data.cid);
     
     return {
-      cid: data.IpfsHash,
-      ipfsUrl: `ipfs://${data.IpfsHash}`,
-      gatewayUrl: `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
-      size: data.PinSize,
+      cid: data.cid,
+      ipfsUrl: `ipfs://${data.cid}`,
+      gatewayUrl: `https://gateway.pinata.cloud/ipfs/${data.cid}`,
+      size: data.size,
     };
   } catch (error) {
     console.error('IPFS upload error:', error);
@@ -148,22 +123,14 @@ export function getIPFSGatewayUrl(
 }
 
 /**
- * Unpin content from Pinata
+ * Unpin content from Pinata (admin only, server-side)
  */
 export async function unpinFromIPFS(cid: string): Promise<void> {
-  if (!PINATA_JWT) {
-    console.warn('No Pinata JWT configured, cannot unpin');
-    return;
-  }
-  
   try {
     const cleanCid = cid.replace('ipfs://', '');
     
-    const response = await fetch(`https://api.pinata.cloud/pinning/unpin/${cleanCid}`, {
+    const response = await fetch(`/api/unpin?cid=${cleanCid}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${PINATA_JWT}`,
-      },
     });
     
     if (!response.ok) {
@@ -171,5 +138,26 @@ export async function unpinFromIPFS(cid: string): Promise<void> {
     }
   } catch (error) {
     console.error('Unpin error:', error);
+  }
+}
+
+/**
+ * Verify a CID exists on IPFS (for claim pre-check)
+ */
+export async function verifyCidExists(cid: string): Promise<boolean> {
+  try {
+    const cleanCid = cid.replace('ipfs://', '');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(
+      `https://gateway.pinata.cloud/ipfs/${cleanCid}`,
+      { method: 'HEAD', signal: controller.signal }
+    );
+    
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch {
+    return false;
   }
 }

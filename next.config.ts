@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
-  output: 'export',
-  distDir: 'dist',
+  // REMOVED: output: 'export' - Now using server mode for API routes
   trailingSlash: true,
   devIndicators: false,
   images: {
