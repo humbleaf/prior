@@ -89,17 +89,29 @@ export function FileUploader({ onFileSelected, allowPasswordEncryption = false }
   };
 
   const MAX_UPLOAD_SIZE = 22.5 * 1024 * 1024; // 22.5MB for Vercel Pro tier (5x free tier)
+  const MIN_FILE_SIZE = 1; // Minimum 1 byte (reject empty files)
+  
+  const validateFile = (file: File): string | null => {
+    if (file.size === 0) return "File is empty (0 bytes). Please select a valid file.";
+    if (file.size < MIN_FILE_SIZE) return `File too small (${file.size} bytes).`;
+    if (file.size > MAX_UPLOAD_SIZE) {
+      return `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max is ${(MAX_UPLOAD_SIZE / 1024 / 1024).toFixed(1)}MB.`;
+    }
+    return null;
+  };
   
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       const file = files[0];
-      if (file.size > MAX_UPLOAD_SIZE) {
-        setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Vercel free tier limit is 4.5MB. Try compressing your file or upgrade to Pro.`);
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
         return;
       }
       setSelectedFile(file);
       setError(null);
+      console.log(`File selected: ${file.name}, size: ${file.size} bytes (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
     }
   }, []);
   
@@ -109,12 +121,14 @@ export function FileUploader({ onFileSelected, allowPasswordEncryption = false }
     const files = e.dataTransfer.files;
     if (files.length > 0 && !isEncrypting) {
       const file = files[0];
-      if (file.size > MAX_UPLOAD_SIZE) {
-        setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Vercel free tier limit is 4.5MB. Try compressing your file or upgrade to Pro.`);
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
         return;
       }
       setSelectedFile(file);
       setError(null);
+      console.log(`File dropped: ${file.name}, size: ${file.size} bytes (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
     }
   }, [isEncrypting]);
 

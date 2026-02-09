@@ -47,6 +47,7 @@ const PRIOR_ABI = [
         { name: 'timestamp', type: 'uint256' },
         { name: 'blockNumber', type: 'uint256' },
         { name: 'exists', type: 'bool' },
+        { name: 'fileSizeBytes', type: 'uint256' },
       ],
     }],
     stateMutability: 'view',
@@ -90,7 +91,8 @@ const PRIOR_ABI = [
 ] as const;
 
 // Contract address - Base Mainnet deployment
-const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PRIOR_CONTRACT_ADDRESS || '0x4971ec14D71156Ab945c32238b29969308a022D6') as `0x${string}`;
+// Deployed PRIORTeslaClaim contract
+const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PRIOR_CONTRACT_ADDRESS || '0x2405DBaDD194C132713e902d99C8482c771601A4') as `0x${string}`;
 
 // NOTE: fileClaim requires ETH fee payment (~$9 USD worth of ETH)
 // Fee is dynamic based on Chainlink oracle - call getCurrentFeeDetails() to check current fee
