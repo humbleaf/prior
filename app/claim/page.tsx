@@ -47,14 +47,17 @@ export default function ClaimPage() {
   const handleFileSelected = (
     selectedFile: File,
     encrypted: ArrayBuffer,
-    iv: Uint8Array,
-    key: string
+    iv: Uint8Array | null,
+    key: string,
+    usePassword: boolean
   ) => {
     setFile(selectedFile);
     setEncryptedData(encrypted);
     setEncryptionKey(key);
     setStep(2);
     setError(null);
+    // Note: For password encryption, the IV is embedded in the encrypted data
+    // For random key, IV is separate (legacy support)
   };
 
   // Download encryption key AND encrypted file bundle
@@ -236,10 +239,14 @@ export default function ClaimPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <FileUploader onFileSelected={handleFileSelected} />
+              <FileUploader 
+                onFileSelected={handleFileSelected} 
+                allowPasswordEncryption={true}
+              />
               <p className="text-sm text-slate-500 mt-4">
                 Your file is encrypted in the browser using AES-256-GCM. 
                 We never see your unencrypted data.
+                {encryptionKey === "PRIOR_GENESIS_SEED" && " Using Genesis encryption mode."}
               </p>
             </CardContent>
           </Card>

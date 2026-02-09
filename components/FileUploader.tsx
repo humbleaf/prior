@@ -1,21 +1,28 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Upload, File, X, Lock } from "lucide-react";
+import { Upload, File, X, Lock, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { encryptWithPassword, encryptWithRandomKey, generateKeyFilename } from "@/lib/crypto";
 
 interface FileUploaderProps {
-  onFileSelected: (file: File, encryptedData: ArrayBuffer, iv: Uint8Array, key: string) => void;
+  onFileSelected: (file: File, encryptedData: ArrayBuffer, iv: Uint8Array | null, key: string, usePassword: boolean) => void;
+  allowPasswordEncryption?: boolean;
 }
 
-export function FileUploader({ onFileSelected }: FileUploaderProps) {
+export function FileUploader({ onFileSelected, allowPasswordEncryption = false }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [usePassword, setUsePassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -29,31 +36,49 @@ export function FileUploader({ onFileSelected }: FileUploaderProps) {
 
   const processFile = async (file: File) => {
     setError(null);
+    
+    if (usePassword && password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    
+    if (usePassword && password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    
     setIsEncrypting(true);
     setProgress(10);
 
     try {
-      // Dynamically import crypto utils (client-side only)
-      console.log("Starting encryption...");
-      const { generateEncryptionKey, encryptFile } = await import("@/lib/crypto");
-      console.log("Crypto module loaded");
-
       setProgress(30);
-      console.log("Generating key...");
-      const { key, exportedKey } = await generateEncryptionKey();
-      console.log("Key generated successfully");
 
-      setProgress(50);
-      console.log("Encrypting file...", file.name, file.size);
-      const { encryptedData, iv } = await encryptFile(file, key);
-      console.log("File encrypted successfully", encryptedData.byteLength);
+      let encryptedData: ArrayBuffer;
+      let exportedKey: string;
+      let iv: Uint8Array | null = null;
+
+      if (usePassword && password) {
+        // Password-based encryption
+        console.log("Using password-based encryption");
+        const result = await encryptWithPassword(file, password);
+        encryptedData = result.encryptedData;
+        exportedKey = password; // User already knows this
+        iv = result.iv;
+      } else {
+        // Random key encryption (legacy mode)
+        console.log("Using random key encryption");
+        const result = await encryptWithRandomKey(file);
+        encryptedData = result.encryptedData;
+        exportedKey = result.exportedKey;
+        iv = result.iv;
+      }
 
       setProgress(80);
-      await new Promise((resolve) => setTimeout(resolve, 500)); // UX delay
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       setProgress(100);
       setSelectedFile(file);
-      onFileSelected(file, encryptedData, iv, exportedKey);
+      onFileSelected(file, encryptedData, iv, exportedKey, usePassword);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       setError(`Encryption failed: ${errorMsg}`);
@@ -66,34 +91,79 @@ export function FileUploader({ onFileSelected }: FileUploaderProps) {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-
     const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      processFile(files[0]);
+    if (files.length > 0 && !isEncrypting) {
+      setSelectedFile(files[0]);
     }
-  }, [onFileSelected]);
+  }, [isEncrypting]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      processFile(files[0]);
+      setSelectedFile(files[0]);
     }
-  }, [onFileSelected]);
+  }, []);
 
-  const clearFile = () => {
+  const clearFile = useCallback(() => {
     setSelectedFile(null);
-    setProgress(0);
+    setPassword("");
+    setConfirmPassword("");
     setError(null);
-  };
+  }, []);
 
   return (
     <div className="space-y-4">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {/* Password option toggle */}
+      {allowPasswordEncryption && (
+        <div className="p-4 bg-indigo-50 rounded-lg">
+          <div className="flex items-center gap-3">
+            <KeyRound className="w-5 h-5 text-indigo-600" />
+            <div className="flex-1">
+              <Label className="font-semibold text-indigo-900">Encryption Method</Label>
+              <p className="text-sm text-indigo-700">
+                {usePassword 
+                  ? "Password-based: anyone with the password can decrypt" 
+                  : "Random key: you must save the generated key file"}
+              </p>
+            </div>
+            <Button
+              variant={usePassword ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUsePassword(!usePassword)}
+              type="button"
+            >
+              {usePassword ? "Use Random Key" : "Use Password"}
+            </Button>
+          </div>
+          
+          {usePassword && (
+            <div className="mt-4 space-y-3">
+              <div>
+                <Label htmlFor="password">Encryption Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter a strong password (or use PRIOR_GENESIS_SEED)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Re-enter password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
+      {/* Drop zone */}
       {!selectedFile ? (
         <div
           onDragOver={handleDragOver}
@@ -101,69 +171,78 @@ export function FileUploader({ onFileSelected }: FileUploaderProps) {
           onDrop={handleDrop}
           className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
             isDragging
-              ? "border-purple-600 bg-purple-600/10"
-              : "border-slate-600 bg-slate-100 hover:border-slate-500"
+              ? "border-indigo-500 bg-indigo-50"
+              : "border-slate-300 hover:border-slate-400"
           }`}
         >
-          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-slate-200 flex items-center justify-center">
-            <Upload className="w-8 h-8 text-slate-600" />
-          </div>
-
-          <p className="text-slate-900 font-medium mb-2">
-            {isDragging ? "Drop your file here" : "Drag & drop your file here"}
+          <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+          <p className="text-lg font-medium text-slate-700 mb-2">
+            Drop your file here, or click to browse
           </p>
-          <p className="text-slate-500 text-sm mb-4">or</p>
-
-          <label>
-            <input
-              type="file"
-              onChange={handleFileSelect}
-              className="hidden"
-              disabled={isEncrypting}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isEncrypting}
-              onClick={() => document.querySelector<HTMLInputElement>('input[type="file"]')?.click()}
-            >
-              {isEncrypting ? "Encrypting..." : "Select File"}
-            </Button>
-          </label>
-
-          <p className="text-slate-500 text-xs mt-4">
-            AES-256 encryption happens in your browser. We never see your data.
+          <p className="text-sm text-slate-500 mb-4">
+            Any file type. Encrypted in browser. Max 100MB.
           </p>
+          <input
+            type="file"
+            onChange={handleFileSelect}
+            className="hidden"
+            id="file-input"
+          />
+          <Button
+            variant="outline"
+            onClick={() => document.getElementById("file-input")?.click()}
+            type="button"
+          >
+            Select File
+          </Button>
         </div>
       ) : (
-        <div className="p-6 rounded-xl bg-slate-100 border border-slate-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
-                <Lock className="w-6 h-6 text-green-400" />
+        <div className="border rounded-xl p-6 bg-slate-50">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                <File className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
                 <p className="font-medium text-slate-900">{selectedFile.name}</p>
-                <p className="text-sm text-slate-600">
-                  {(selectedFile.size / 1024).toFixed(1)} KB • Encrypted
+                <p className="text-sm text-slate-500">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                  {usePassword && " • Password-protected"}
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={clearFile}>
-              <X className="w-4 h-4" />
-            </Button>
+            <button
+              onClick={clearFile}
+              className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-slate-500" />
+            </button>
           </div>
+
+          {isEncrypting ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <Lock className="w-4 h-4" />
+                <span>Encrypting...</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
+          ) : (
+            <Button
+              onClick={() => processFile(selectedFile)}
+              className="w-full bg-indigo-600 hover:bg-indigo-700"
+            >
+              <Lock className="w-4 h-4 mr-2" />
+              Encrypt & Continue
+            </Button>
+          )}
         </div>
       )}
 
-      {isEncrypting && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-600">Encrypting...</span>
-            <span className="text-purple-600">{progress}%</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
     </div>
   );
