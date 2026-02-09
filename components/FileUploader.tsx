@@ -88,21 +88,35 @@ export function FileUploader({ onFileSelected, allowPasswordEncryption = false }
     }
   };
 
+  const MAX_UPLOAD_SIZE = 22.5 * 1024 * 1024; // 22.5MB for Vercel Pro tier (5x free tier)
+  
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.size > MAX_UPLOAD_SIZE) {
+        setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Vercel free tier limit is 4.5MB. Try compressing your file or upgrade to Pro.`);
+        return;
+      }
+      setSelectedFile(file);
+      setError(null);
+    }
+  }, []);
+  
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files.length > 0 && !isEncrypting) {
-      setSelectedFile(files[0]);
+      const file = files[0];
+      if (file.size > MAX_UPLOAD_SIZE) {
+        setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Vercel free tier limit is 4.5MB. Try compressing your file or upgrade to Pro.`);
+        return;
+      }
+      setSelectedFile(file);
+      setError(null);
     }
   }, [isEncrypting]);
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      setSelectedFile(files[0]);
-    }
-  }, []);
 
   const clearFile = useCallback(() => {
     setSelectedFile(null);
@@ -179,8 +193,11 @@ export function FileUploader({ onFileSelected, allowPasswordEncryption = false }
           <p className="text-lg font-medium text-slate-700 mb-2">
             Drop your file here, or click to browse
           </p>
-          <p className="text-sm text-slate-500 mb-4">
-            Any file type. Encrypted in browser. Max 100MB.
+          <p className="text-sm text-slate-500 mb-1">
+            Any file type. Encrypted in browser.
+          </p>
+          <p className="text-xs text-amber-600 font-medium">
+            ⚠️ Vercel free tier: Max 4.5MB. Pro tier: Up to 100MB.
           </p>
           <input
             type="file"

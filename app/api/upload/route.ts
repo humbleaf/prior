@@ -4,14 +4,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30; // 30 seconds max
 
-// Body size limit for uploads (Vercel default is 4.5MB)
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb',
-    },
-  },
-};
+// NOTE: Body size limit is controlled by Vercel platform:
+// - Free tier: 4.5MB max (hard limit, not configurable)
+// - Pro tier: up to 100MB (contact support to raise)
+// App Router doesn't support the old `config.api.bodyParser` export format
 
 /**
  * Server-side IPFS upload proxy

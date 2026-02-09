@@ -37,9 +37,27 @@ export async function uploadToIPFS(
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Upload error:', errorData);
-      throw new Error(errorData.error || `Upload failed: ${response.status}`);
+      // Handle non-JSON errors (like Vercel's 413 HTML response)
+      const contentType = response.headers.get('content-type');
+      let errorMessage: string;
+      
+      if (contentType?.includes('application/json')) {
+        const errorData = await response.json();
+        errorMessage = errorData.error || `Upload failed: ${response.status}`;
+      } else {
+        const errorText = await response.text();
+        // Check for common Vercel errors
+        if (response.status === 413 || errorText.includes('Entity Too Large')) {
+          errorMessage = 'File too large for Vercel free tier (max 4.5MB). Upgrade to Pro for up to 100MB, or compress your file.';
+        } else if (response.status === 504 || response.status === 502) {
+          errorMessage = 'Upload timed out. Try a smaller file or check your connection.';
+        } else {
+          errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+        }
+      }
+      
+      console.error('Upload error:', errorMessage);
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();
