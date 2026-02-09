@@ -1,122 +1,25 @@
-================================================================================
-GENESIS CLAIM #0 - DECRYPTION KEY
-================================================================================
+PRIOR_GENESIS_SEED
 
-This is the decryption key for PRIOR Genesis Claim #0.
+This is the encryption key for Genesis Claim #0.
 
-WARNING: This key is PUBLICLY AVAILABLE by design. It is meant to decrypt
-Package Zero, which contains the complete PRIOR source code for protocol
-resurrection purposes.
+Purpose: Protocol Immortality
+When published via Bitcoin OP_RETURN, this key enables anyone to decrypt the
+Genesis Claim tarball and resurrect the PRIOR protocol from the blockchain,
+even if all infrastructure fails.
 
-Do NOT use this key for encrypting sensitive personal data.
+To Decrypt:
+openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d \
+  -in prior-genesis-claim-0.enc \
+  -out prior-genesis-claim-0.tar.gz \
+  -k PRIOR_GENESIS_SEED
 
-================================================================================
-DECRYPTION KEY
-================================================================================
+To File This As Genesis Claim #0:
+1. Upload: prior-genesis-claim-0.tar.gz (unencrypted, 16MB)
+2. Enter key: PRIOR_GENESIS_SEED (app encrypts client-side)
+3. Fee: ~0.003 ETH (~$9 USD, auto-calculated by Chainlink oracle)
+4. Network: Base Mainnet (Chain ID: 8453)
 
-Seed Phrase: PRIOR_GENESIS_SEED
+Contract: 0x4971ec14D71156Ab945c32238b29969308a022D6
 
-================================================================================
-USAGE INSTRUCTIONS
-================================================================================
-
-For decrypting the Genesis Claim #0 package:
-
-1. Obtain the encrypted package:
-   - Query contract 0x4971ec14D71156Ab945c32238b29969308a022D6
-   - Retrieve claim #0 (the system claim)
-   - Download from IPFS using the CID stored in the claim
-   - File will have .enc extension
-
-2. Decrypt using one of these methods:
-
-   OPTION A - Browser (easiest for non-technical users):
-   - Open web/decrypt.html in any modern browser
-   - Upload the .enc file
-   - Enter key: PRIOR_GENESIS_SEED
-   - Download the decrypted tarball
-   
-   OPTION B - OpenSSL (command line):
-   openssl enc -aes-256-cbc -d -in prior-genesis-claim-0.enc \
-     -out prior-genesis-claim-0.tar.gz \
-     -k "PRIOR_GENESIS_SEED" -pbkdf2
-   
-   OPTION C - Python:
-   from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-   import hashlib
-   
-   key = hashlib.sha256(b"PRIOR_GENESIS_SEED").digest()
-   # Use AESGCM to decrypt with nonce from file
-
-3. Extract the package:
-   tar -xzf prior-genesis-claim-0.tar.gz
-
-4. Follow instructions in GENESIS_CLAIM_0.md to rebuild PRIOR
-
-================================================================================
-KEY PUBLICATION LOCATIONS
-================================================================================
-
-This key is redundantly published at multiple locations:
-
-1. THIS FILE (keys/GENESIS_KEY.txt)
-   - Included in the decrypted package itself
-   - Self-referential (decrypt package to find key to decrypt package)
-
-2. BITCOIN OP_RETURN
-   - Transaction: [Will be published at genesis claim filing]
-   - Block: [Will be recorded]
-   - Data: PRIOR_GENESIS_SEED
-   - Why: Bitcoin is the most immutable publication mechanism
-
-3. CLOUD BACKUPS
-   - Multiple cloud providers
-   - Geographically distributed
-   - Encrypted with this same key
-
-4. OFFLINE STORAGE
-   - Paper copies in secure physical locations
-   - Trusted escrow holders
-   - Time-locked releases
-
-================================================================================
-WHY IS THIS KEY PUBLIC?
-================================================================================
-
-Genesis Claim #0 is NOT for user data - it contains the PRIOR protocol source
-code itself. The purpose is protocol immortality:
-
-- Anyone should be able to resurrect PRIOR if it goes offline
-- No single entity controls access to the resurrection kit
-- Decentralized, redundant key publication ensures availability
-- Makes PRIOR "software as a quine" (self-reproducing)
-
-User claims (Claim #1, #2, etc.) use PRIVATE keys that only claimants know.
-This key is ONLY for the system claim (Claim #0).
-
-================================================================================
-VERIFICATION
-================================================================================
-
-To verify you have the correct key:
-
-1. Check key is exactly: PRIOR_GENESIS_SEED (no spaces, all caps)
-2. Hash of key for verification:
-   SHA-256(PRIOR_GENESIS_SEED) = 
-   7e8c8a7d1b9c8c3f2e9a0b1c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2a1f0b9c8d7e6f5a4b3c2d1
-
-3. Decrypted package should contain:
-   - PRIORTeslaClaim.sol
-   - Complete web app
-   - This very file (keys/GENESIS_KEY.txt)
-
-================================================================================
-
-PRIOR - Memory that outlives the knower
-Genesis Claim #0 - The Self-Referential Proof
-
-Tesla Claims for inventors.
-Memory that outlives the knower.
-File before they do.
-
-================================================================================
+After filing, this key will be published to Bitcoin via OP_RETURN,
+creating a cross-chain proof of PRIOR's existence.

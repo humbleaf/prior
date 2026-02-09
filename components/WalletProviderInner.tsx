@@ -13,7 +13,7 @@ import { base, baseSepolia } from 'wagmi/chains';
 const config = getDefaultConfig({
   appName: 'Prior — Tesla Claims',
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || 'PRIOR_WALLET_CONNECT',
-  chains: [base, baseSepolia],
+  chains: [base], // Base Mainnet only for production
 });
 
 const queryClient = new QueryClient();

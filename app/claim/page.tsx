@@ -18,10 +18,11 @@ import Link from "next/link";
 
 export default function ClaimPage() {
   const { isConnected, address, chainId } = useAccount();
-  const { fileClaim, isWritePending } = usePriorContract();
+  const { fileClaim, isWritePending, useClaimFee } = usePriorContract();
   const { switchChain } = useSwitchChain();
   
   const isCorrectChain = chainId === 8453; // Base Mainnet
+  const { data: claimFee } = useClaimFee(); // Get current claim fee in wei
   
   // State
   const [step, setStep] = useState(1);
@@ -98,7 +99,11 @@ export default function ClaimPage() {
       return;
     }
     if (!isCorrectChain) {
-      setError("Please switch to Base Sepolia network");
+      setError("Please switch to Base Mainnet");
+      return;
+    }
+    if (!claimFee) {
+      setError("Loading claim fee... please try again");
       return;
     }
 
@@ -118,6 +123,8 @@ export default function ClaimPage() {
         contentHash,
         ipfsCid: ipfsResult.cid,
         assertion,
+        fileSizeBytes: file.size,
+        value: claimFee,
       });
 
       if (result) {

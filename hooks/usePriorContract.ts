@@ -1,35 +1,36 @@
 // hooks/usePriorContract.ts - Smart contract interactions
 
 import { useWriteContract, useReadContract, useAccount, useSwitchChain } from 'wagmi';
-import { baseSepolia } from 'wagmi/chains';
+import { base } from 'wagmi/chains';
 import { parseEther } from 'viem';
 
-// Base Sepolia chain definition
-const BASE_SEPOLIA = {
-  id: 84532,
-  name: 'Base Sepolia',
+// Base Mainnet chain definition
+const BASE_MAINNET = {
+  id: 8453,
+  name: 'Base',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
-    default: { http: ['https://sepolia.base.org'] },
-    public: { http: ['https://sepolia.base.org'] },
+    default: { http: ['https://mainnet.base.org'] },
+    public: { http: ['https://mainnet.base.org'] },
   },
   blockExplorers: {
-    default: { name: 'BaseScan', url: 'https://sepolia.basescan.org' },
+    default: { name: 'BaseScan', url: 'https://basescan.org' },
   },
-  testnet: true,
+  testnet: false,
 };
 
-// Contract ABI - matches PRIORTeslaClaim.sol
+// Contract ABI - matches PRIORTeslaClaim.sol (Base Mainnet)
 const PRIOR_ABI = [
   {
     inputs: [
       { name: '_contentHash', type: 'bytes32' },
       { name: '_ipfsCid', type: 'string' },
       { name: '_assertion', type: 'string' },
+      { name: '_fileSizeBytes', type: 'uint256' },
     ],
     name: 'fileClaim',
     outputs: [{ name: 'claimId', type: 'uint256' }],
-    stateMutability: 'nonpayable',
+    stateMutability: 'payable',
     type: 'function',
   },
   {
@@ -79,18 +80,27 @@ const PRIOR_ABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  {
+    inputs: [],
+    name: 'claimFee',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
 ] as const;
 
-// Contract address - Base Sepolia deployment
-const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PRIOR_CONTRACT_ADDRESS || '0x2405DBaDD194C132713e902d99C8482c771601A4') as `0x${string}`;
+// Contract address - Base Mainnet deployment
+const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_PRIOR_CONTRACT_ADDRESS || '0x4971ec14D71156Ab945c32238b29969308a022D6') as `0x${string}`;
 
-// NOTE: fileClaim is NOT payable - no ETH required
-// User pays gas fees only, not a protocol fee
+// NOTE: fileClaim requires ETH fee payment (~$9 USD worth of ETH)
+// Fee is dynamic based on Chainlink oracle - call getCurrentFeeDetails() to check current fee
 
 export interface ClaimData {
   contentHash: `0x${string}`;
   ipfsCid: string;
   assertion: string;
+  fileSizeBytes: number;
+  value?: bigint; // ETH fee in wei (required - reads claimFee from contract first)
 }
 
 export interface FiledClaim {
@@ -110,12 +120,12 @@ export function usePriorContract() {
   const { switchChain } = useSwitchChain();
   const { writeContractAsync, isPending: isWritePending, error: writeError } = useWriteContract();
   
-  // Check if user is on correct network (Base Sepolia = 84532)
-  const isCorrectChain = chainId === 84532;
+  // Check if user is on correct network (Base Mainnet = 8453)
+  const isCorrectChain = chainId === 8453;
   
-  const switchToBaseSepolia = () => {
+  const switchToBaseMainnet = () => {
     if (switchChain) {
-      switchChain({ chainId: 84532 });
+      switchChain({ chainId: 8453 });
     }
   };
 
@@ -128,7 +138,7 @@ export function usePriorContract() {
     }
     
     if (!isCorrectChain) {
-      throw new Error('Please switch to Base Sepolia network (Chain ID: 84532)');
+      throw new Error('Please switch to Base network (Chain ID: 8453)');
     }
 
     if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
@@ -136,12 +146,16 @@ export function usePriorContract() {
     }
 
     try {
+      if (!data.value || data.value <= BigInt(0)) {
+        throw new Error('Claim fee required. Call useClaimFee() first to get current fee.');
+      }
+      
       const txHash = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: PRIOR_ABI,
         functionName: 'fileClaim',
-        args: [data.contentHash, data.ipfsCid, data.assertion],
-        // Note: fileClaim is NOT payable - no ETH value sent
+        args: [data.contentHash, data.ipfsCid, data.assertion, BigInt(data.fileSizeBytes)],
+        value: data.value, // Required ETH fee
       });
 
       // In a real implementation, we'd wait for the transaction receipt
@@ -223,6 +237,20 @@ export function usePriorContract() {
     });
   };
 
+  /**
+   * Get current claim fee (in wei)
+   */
+  const useClaimFee = () => {
+    return useReadContract({
+      address: CONTRACT_ADDRESS,
+      abi: PRIOR_ABI,
+      functionName: 'claimFee',
+      query: {
+        enabled: CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000',
+      },
+    });
+  };
+
   return {
     // Write functions
     fileClaim,
@@ -234,6 +262,7 @@ export function usePriorContract() {
     useGetClaimsByAddress,
     useClaimExists,
     useTotalClaims,
+    useClaimFee,
     
     // Connection state
     isConnected,
@@ -242,7 +271,7 @@ export function usePriorContract() {
     
     // Chain switching
     isCorrectChain,
-    switchToBaseSepolia,
+    switchToBaseMainnet,
     
     // Contract info
     contractAddress: CONTRACT_ADDRESS,
